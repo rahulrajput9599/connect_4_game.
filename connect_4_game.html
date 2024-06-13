@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connect Four</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto:wght@400;700&family=Lobster&display=swap');
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            overflow: hidden;
+        }
+
+        .container {
+            text-align: center;
+            background: #ffffff;
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+            max-width: 600px;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+            animation: slideIn 1s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateY(-100vh);
+            }
+
+            to {
+                transform: translateY(0);
+            }
+        }
+
+        h1 {
+            font-family: 'Lobster', cursive;
+            color: #34495e;
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 5px rgba(0, 0, 0, 0.5);
+            animation: fadeIn 2s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+            }
+
+            to {
+                opacity: 1;
+            }
+        }
+
+        #board {
+            display: grid;
+            grid-template-columns: repeat(7, 70px);
+            grid-template-rows: repeat(6, 70px);
+            gap: 5px;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+
+        .cell {
+            width: 70px;
+            height: 70px;
+            background-color: #bdc3c7;
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: transform 0.3s, background-color 0.3s, box-shadow 0.3s;
+            position: relative;
+        }
+
+        .cell:after {
+            content: '';
+            display: block;
+            padding-bottom: 100%;
+        }
+
+        .cell:hover {
+            background-color: #ecf0f1;
+            transform: scale(1.1);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+
+        .cell.red {
+            background-color: #ff6b6b;
+            box-shadow: 0 0 15px rgba(255, 107, 107, 0.8);
+            animation: popIn 0.3s ease-out;
+        }
+
+        .cell.yellow {
+            background-color: #ffe66d;
+            box-shadow: 0 0 15px rgba(255, 230, 109, 0.8);
+            animation: popIn 0.3s ease-out;
+        }
+
+        @keyframes popIn {
+            from {
+                transform: scale(0);
+            }
+
+            to {
+                transform: scale(1);
+            }
+        }
+
+        #status {
+            font-size: 22px;
+            color: #ffffff;
+            margin-bottom: 20px;
+            padding: 10px 20px;
+            background-color: #34495e;
+            border-radius: 5px;
+            box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.5);
+            transition: background-color 0.3s, color 0.3s;
+            animation: fadeIn 1s ease-in-out;
+        }
+
+        #reset {
+            padding: 12px 25px;
+            font-size: 18px;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.3s;
+        }
+
+        #reset:hover {
+            background-color: #2980b9;
+            transform: scale(1.05);
+        }
+
+        #reset:active {
+            background-color: #1c5f87;
+        }
+
+        .celebration {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: none;
+            font-size: 150px;
+            color: gold;
+            animation: celebration 1s infinite;
+        }
+
+        @keyframes celebration {
+            0% {
+                transform: translate(-50%, -50%) scale(1);
+            }
+
+            50% {
+                transform: translate(-50%, -50%) scale(1.2);
+            }
+
+            100% {
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Connect Four</h1>
+        <div id="board"></div>
+        <div id="status"></div>
+        <button id="reset">Reset Game</button>
+        <div id="celebration" class="celebration">🎉</div>
+        <audio id="winSound" src="https://www.soundjay.com/misc/sounds/bell-ringing-05.mp3"></audio>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const columns = 7;
+            const rows = 6;
+            const board = [];
+            const boardElement = document.getElementById('board');
+            const statusElement = document.getElementById('status');
+            const resetButton = document.getElementById('reset');
+            const celebrationElement = document.getElementById('celebration');
+            const winSound = document.getElementById('winSound');
+            let currentPlayer = 'red';
+
+            // Initialize board
+            for (let r = 0; r < rows; r++) {
+                const row = [];
+                for (let c = 0; c < columns; c++) {
+                    const cell = document.createElement('div');
+                    cell.classList.add('cell');
+                    cell.dataset.column = c;
+                    boardElement.appendChild(cell);
+                    row.push(null);
+                }
+                board.push(row);
+            }
+
+            // Handle cell click
+            boardElement.addEventListener('click', (event) => {
+                const column = event.target.dataset.column;
+                if (column !== undefined) {
+                    placeDisc(parseInt(column));
+                }
+            });
+
+            // Place disc in the lowest available cell in the column
+            function placeDisc(column) {
+                for (let r = rows - 1; r >= 0; r--) {
+                    if (!board[r][column]) {
+                        board[r][column] = currentPlayer;
+                        const cell = boardElement.children[r * columns + column];
+                        cell.classList.add(currentPlayer);
+
+                        if (checkWin(r, column)) {
+                            statusElement.textContent = `${currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1)} wins!`;
+                            statusElement.style.backgroundColor = currentPlayer === 'red' ? '#e74c3c' : '#f1c40f';
+                            statusElement.style.color = '#ffffff';
+                            boardElement.style.pointerEvents = 'none';
+                            celebrationElement.style.display = 'block';
+                            winSound.play();
+                        } else if (board.flat().every(cell => cell)) {
+                            statusElement.textContent = 'Draw!';
+                            statusElement.style.backgroundColor = '#3b5b75';
+                            statusElement.style.color = '#ffffff';
+                        } else {
+                            currentPlayer = currentPlayer === 'red' ? 'yellow' : 'red';
+                            statusElement.textContent = `${currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1)}'s turn`;
+                        }
+                        break;
+                    }
+                }
+            }
+
+            // Check for a win
+            function checkWin(row, col) {
+                return checkDirection(row, col, 1, 0) || // Horizontal
+                    checkDirection(row, col, 0, 1) || // Vertical
+                    checkDirection(row, col, 1, 1) || // Diagonal /
+                    checkDirection(row, col, 1, -1);  // Diagonal \
+            }
+
+            function checkDirection(row, col, rowDelta, colDelta) {
+                let count = 1;
+                let r, c;
+
+                r = row + rowDelta;
+                c = col + colDelta;
+                while (r >= 0 && r < rows && c >= 0 && c < columns && board[r][c] === currentPlayer) {
+                    count++;
+                    r += rowDelta;
+                    c += colDelta;
+                }
+
+                r = row - rowDelta;
+                c = col - colDelta;
+                while (r >= 0 && r < rows && c >= 0 && c < columns && board[r][c] === currentPlayer) {
+                    count++;
+                    r -= rowDelta;
+                    c -= colDelta;
+                }
+
+                return count >= 4;
+            }
+
+            // Reset game
+            resetButton.addEventListener('click', () => {
+                board.forEach((row, r) => row.forEach((_, c) => {
+                    board[r][c] = null;
+                    boardElement.children[r * columns + c].className = 'cell';
+                }));
+                currentPlayer = 'red';
+                statusElement.textContent = `${currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1)}'s turn`;
+                statusElement.style.backgroundColor = '#2c3e50';
+                statusElement.style.color = '#e0e0e0';
+                boardElement.style.pointerEvents = '';
+                celebrationElement.style.display = 'none';
+            });
+
+            // Initial status
+            statusElement.textContent = `${currentPlayer.charAt(0).toUpperCase() + currentPlayer.slice(1)}'s turn`;
+        });
+    </script>
+</body>
+
+</html>
